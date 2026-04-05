@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Note Reader — Lyre & Guzheng</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1209;
+    --paper: #f5f0e8;
+    --paper2: #ede7d5;
+    --accent: #c0392b;
+    --gold: #b8860b;
+    --line: #8b7355;
+    --correct: #2e7d32;
+    --wrong: #c0392b;
+    --staff-line: #3a2e1a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Serif', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(139,115,85,0.08) 27px, rgba(139,115,85,0.08) 28px);
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  header h1 {
+    font-family: 'Noto Serif', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+  }
+
+  header h1 span { color: var(--accent); }
+
+  header p {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--line);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* Instrument selector */
+  .inst-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 22px;
+    background: var(--paper2);
+    border: 1.5px solid var(--line);
+    border-radius: 4px;
+    padding: 4px;
+  }
+
+  .inst-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    padding: 7px 18px;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--line);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.18s;
+  }
+  .inst-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* Score bar */
+  .score-bar {
+    display: flex;
+    gap: 28px;
+    margin-bottom: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--line);
+    letter-spacing: 0.06em;
+  }
+  .score-bar span { color: var(--ink); font-weight: 700; }
+
+  /* Card */
+  .card {
+    background: white;
+    border: 1.5px solid #c9b99a;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 560px;
+    padding: 28px 24px 24px;
+    box-shadow: 4px 6px 0 #c9b99a44;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* Notation mode tabs */
+  .notation-tabs {
+    display: flex;
+    gap: 6px;
+    align-self: flex-end;
+  }
+  .ntab {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    padding: 3px 10px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--line);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .ntab.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* Staff SVG area */
+  #staff-area {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Jianpu display */
+  #jianpu-area {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  #jianpu-area.visible { display: flex; }
+
+  .jianpu-number {
+    font-family: 'Space Mono', monospace;
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+    position: relative;
+    display: inline-block;
+  }
+  .jianpu-dots-above, .jianpu-dots-below {
+    font-size: 1.2rem;
+    color: var(--ink);
+    text-align: center;
+    letter-spacing: 0.3em;
+    line-height: 1;
+  }
+  .jianpu-dots-above { margin-bottom: 2px; }
+  .jianpu-dots-below { margin-top: 2px; }
+
+  /* Answer buttons */
+  .answers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  .ans-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.88rem;
+    padding: 11px 6px;
+    border: 1.5px solid #c9b99a;
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--paper);
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .ans-btn:hover:not(:disabled) { background: var(--paper2); border-color: var(--ink); }
+  .ans-btn.correct { background: #e8f5e9; border-color: var(--correct); color: var(--correct); font-weight: 700; }
+  .ans-btn.wrong   { background: #ffebee; border-color: var(--wrong);   color: var(--wrong);   }
+  .ans-btn:disabled { cursor: default; }
+
+  /* Feedback */
+  #feedback {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    min-height: 22px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--correct);
+  }
+  #feedback.wrong-fb { color: var(--wrong); }
+
+  /* Next button */
+  #next-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    padding: 9px 28px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #next-btn.visible { opacity: 1; pointer-events: all; }
+
+  /* Progress strip */
+  .progress-strip {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 560px;
+    margin-top: 14px;
+  }
+  .pip {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #ddd;
+    border: 1px solid #c9b99a;
+  }
+  .pip.ok  { background: var(--correct); border-color: var(--correct); }
+  .pip.bad { background: var(--wrong);   border-color: var(--wrong); }
+
+  /* Clef label */
+  .clef-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--line);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  footer {
+    margin-top: 32px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: #bbb;
+    letter-spacing: 0.08em;
+  }
+
+  /* Main page tabs */
+  .page-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 22px;
+    border: 1.5px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .page-tab {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    padding: 8px 22px;
+    border: none;
+    cursor: pointer;
+    background: var(--paper2);
+    color: var(--line);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.18s;
+    border-right: 1px solid var(--line);
+  }
+  .page-tab:last-child { border-right: none; }
+  .page-tab.active { background: var(--ink); color: var(--paper); }
+
+  /* Sections */
+  .section { width: 100%; max-width: 560px; display: none; flex-direction: column; align-items: center; gap: 0; }
+  .section.active { display: flex; }
+
+  /* ── Sequencer ── */
+  .seq-card {
+    background: white;
+    border: 1.5px solid #c9b99a;
+    border-radius: 6px;
+    width: 100%;
+    padding: 22px 20px 20px;
+    box-shadow: 4px 6px 0 #c9b99a44;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .seq-section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--line);
+    margin-bottom: 6px;
+  }
+
+  /* Note grid */
+  .note-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .ng-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    padding: 6px 9px;
+    border: 1.5px solid #c9b99a;
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--paper);
+    color: var(--ink);
+    transition: all 0.12s;
+    min-width: 40px;
+    text-align: center;
+  }
+  .ng-btn:hover { background: var(--paper2); border-color: var(--ink); }
+  .ng-btn.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* Duration grid */
+  .dur-grid {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .dur-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    padding: 7px 12px;
+    border: 1.5px solid #c9b99a;
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--paper);
+    color: var(--ink);
+    transition: all 0.12s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+  }
+  .dur-btn:hover { background: var(--paper2); border-color: var(--ink); }
+  .dur-btn.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .dur-symbol { font-size: 1rem; line-height: 1; }
+  .dur-label  { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; }
+
+  /* Add button */
+  #seq-add-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    padding: 9px 0;
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+  #seq-add-btn:disabled { opacity: 0.35; cursor: default; }
+
+  /* Sequence display */
+  .seq-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 62px;
+    background: var(--paper);
+    border: 1.5px dashed #c9b99a;
+    border-radius: 4px;
+    padding: 10px;
+    align-items: flex-end;
+  }
+  .seq-note-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    padding: 4px 7px;
+    border-radius: 3px;
+    border: 1.5px solid transparent;
+    transition: all 0.12s;
+    position: relative;
+  }
+  .seq-note-chip:hover { border-color: var(--wrong); background: #fff0f0; }
+  .seq-note-chip.playing { background: #fff8e1; border-color: var(--gold); }
+  .seq-note-chip .chip-western {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .seq-note-chip .chip-dur {
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+  .seq-note-chip .chip-jianpu {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--line);
+    line-height: 1;
+  }
+  .seq-note-chip .chip-notes-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 100%;
+  }
+  .seq-note-chip .chip-note-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    line-height: 1;
+  }
+  .chord-chip {
+    border-color: var(--gold) !important;
+    background: #fffbf0 !important;
+    position: relative;
+  }
+  .chord-chip.playing { background: #fff3cd !important; border-color: var(--gold) !important; }
+  .chip-chord-bar {
+    width: 3px;
+    position: absolute;
+    left: 3px;
+    top: 8px;
+    bottom: 8px;
+    background: var(--gold);
+    border-radius: 2px;
+  }
+
+  /* Rest chip */
+  .rest-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 10px;
+    border: 1.5px dashed #c9b99a;
+    border-radius: 3px;
+    background: #fafafa;
+    cursor: pointer;
+    transition: all 0.12s;
+    min-width: 44px;
+  }
+  .rest-chip:hover { border-color: var(--wrong); background: #fff0f0; }
+  .rest-chip.playing { background: #fff8e1; border-color: var(--gold); border-style: solid; }
+  .rest-chip .rest-symbol { font-size: 1.1rem; line-height: 1; color: #aaa; }
+  .rest-chip .rest-label  { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: #bbb; text-transform: uppercase; letter-spacing: 0.06em; }
+  .rest-chip .rest-dashes { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: #ccc; letter-spacing: 0.1em; }
+
+  /* Bar line separator */
+  .seq-barline {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 0 2px;
+    opacity: 0.5;
+    transition: opacity 0.12s;
+    align-self: stretch;
+  }
+  .seq-barline:hover { opacity: 1; }
+  .seq-barline .bar-inner {
+    width: 3px;
+    height: 100%;
+    min-height: 48px;
+    background: var(--ink);
+    border-radius: 2px;
+  }
+  .seq-barline .bar-x {
+    position: absolute;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--wrong);
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+  }
+  .seq-barline:hover .bar-x { display: block; }
+
+  .seq-empty {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: #bbb;
+    letter-spacing: 0.06em;
+    align-self: center;
+    margin: auto;
+  }
+
+  /* BPM */
+  .bpm-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .bpm-row label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--line);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  #bpm-slider {
+    flex: 1;
+    accent-color: var(--ink);
+  }
+  #bpm-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--ink);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* Playback controls */
+  .seq-controls {
+    display: flex;
+    gap: 8px;
+  }
+  .seq-ctrl-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    padding: 9px 0;
+    flex: 1;
+    border: 1.5px solid var(--line);
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--paper);
+    color: var(--ink);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .seq-ctrl-btn:hover { background: var(--paper2); }
+  .seq-ctrl-btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .seq-ctrl-btn.primary:hover { opacity: 0.85; }
+  .seq-ctrl-btn:disabled { opacity: 0.35; cursor: default; }
+  .seq-ctrl-btn.loop-on { background: var(--gold); color: white; border-color: var(--gold); }
+
+  .decay-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    padding: 4px 10px;
+    border: 1.5px solid #c9b99a;
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--paper);
+    color: var(--line);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .decay-btn:hover { background: var(--paper2); border-color: var(--ink); color: var(--ink); }
+  .decay-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* Saved sequences */
+  .saved-slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--paper);
+    border: 1.5px solid #c9b99a;
+    border-radius: 4px;
+    padding: 8px 10px;
+    transition: border-color 0.15s;
+  }
+  .saved-slot:hover { border-color: var(--line); }
+  .saved-slot-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .saved-slot-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .saved-slot-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: #aaa;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+  .saved-slot-preview {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--line);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .saved-slot-btns {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .slot-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    padding: 4px 8px;
+    border: 1.5px solid #c9b99a;
+    border-radius: 2px;
+    cursor: pointer;
+    background: white;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    transition: all 0.12s;
+  }
+  .slot-btn:hover { background: var(--paper2); border-color: var(--ink); }
+  .slot-btn.load-btn { border-color: var(--correct); color: var(--correct); }
+  .slot-btn.load-btn:hover { background: #e8f5e9; }
+  .slot-btn.del-btn { border-color: #e0c0c0; color: #c0392b; }
+  .slot-btn.del-btn:hover { background: #ffebee; }
+  .saved-empty {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: #bbb;
+    letter-spacing: 0.06em;
+    text-align: center;
+    padding: 10px 0;
+  }
+
+  /* Volume toggle */
+  #vol-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: var(--paper2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--ink);
+    transition: all 0.15s;
+    box-shadow: 2px 2px 0 #c9b99a66;
+    z-index: 100;
+  }
+  #vol-btn:hover { background: var(--paper); border-color: var(--ink); }
+  #vol-btn.muted { color: var(--line); background: #eee; }
+
+  /* ── Print / PDF export ── */
+  @media print {
+    body {
+      background: white !important;
+      background-image: none !important;
+      padding: 0;
+      font-family: 'Noto Serif', serif;
+    }
+    /* Hide everything except the print sheet */
+    header, .page-tabs, .inst-bar, .score-bar, .section,
+    #vol-btn, footer, .seq-card { display: none !important; }
+    #print-sheet { display: block !important; }
+  }
+
+  /* Print sheet (hidden on screen) */
+  #print-sheet {
+    display: none;
+    font-family: 'Noto Serif', serif;
+    padding: 32px 40px;
+    max-width: 720px;
+    margin: 0 auto;
+    color: #1a1209;
+  }
+  #print-sheet h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  #print-sheet .print-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: #888;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+  }
+  #print-sheet .print-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  #print-sheet .print-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    border: 1.5px solid #c9b99a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    min-width: 52px;
+    background: #fdf8f0;
+  }
+  #print-sheet .print-chip .pc-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: #888;
+    letter-spacing: 0.06em;
+  }
+  #print-sheet .print-chip .pc-note {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a1209;
+    line-height: 1;
+  }
+  #print-sheet .print-chip .pc-dur {
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  #print-sheet .print-chip .pc-jianpu {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: #c0392b;
+    font-weight: 700;
+    line-height: 1;
+  }
+  #print-sheet .print-chip .pc-durname {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  #print-sheet .print-bpm {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: #555;
+    margin-top: 8px;
+    border-top: 1px dashed #ddd;
+    padding-top: 12px;
+  }
+  #print-sheet .print-footer {
+    margin-top: 40px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: #ccc;
+    text-align: center;
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Note <span>Reader</span></h1>
+  <p>Lyre Harp · Guzheng · Practice</p>
+</header>
+
+<!-- Main page tabs -->
+<div class="page-tabs">
+  <button class="page-tab active" onclick="switchPage('practice')">🎵 Practice</button>
+  <button class="page-tab" onclick="switchPage('sequencer')">🎼 Sequencer</button>
+</div>
+
+<!-- ═══ PRACTICE SECTION ═══ -->
+<div class="section active" id="page-practice">
+
+<!-- Instrument selector -->
+<div class="inst-bar">
+  <button class="inst-btn active" onclick="setInstrument('lyre')">🎵 Lyre Harp</button>
+  <button class="inst-btn" onclick="setInstrument('guzheng')">🎶 Guzheng</button>
+</div>
+
+<!-- Score -->
+<div class="score-bar">
+  <div>Correct <span id="sc-correct">0</span></div>
+  <div>Wrong <span id="sc-wrong">0</span></div>
+  <div>Streak <span id="sc-streak">0</span></div>
+</div>
+
+<!-- Card -->
+<div class="card">
+  <div class="notation-tabs">
+    <button class="ntab active" onclick="setNotation('staff')">Staff</button>
+    <button class="ntab" onclick="setNotation('jianpu')">Jianpu</button>
+    <button class="ntab" onclick="setNotation('both')">Both</button>
+  </div>
+
+  <div class="clef-label" id="clef-label">Treble Clef</div>
+
+  <!-- Staff notation -->
+  <div id="staff-area">
+    <svg id="staff-svg" width="320" height="160" viewBox="0 0 320 160"></svg>
+  </div>
+
+  <!-- Jianpu notation -->
+  <div id="jianpu-area">
+    <div class="jianpu-dots-above" id="jianpu-dots-above"></div>
+    <div class="jianpu-number" id="jianpu-num">?</div>
+    <div class="jianpu-dots-below" id="jianpu-dots-below"></div>
+  </div>
+
+  <div class="answers" id="answers"></div>
+  <div id="feedback"></div>
+  <button id="next-btn" onclick="nextNote()">Next →</button>
+</div>
+
+<!-- Progress pips -->
+<div class="progress-strip" id="progress-strip"></div>
+
+</div><!-- end #page-practice -->
+
+<!-- ═══ SEQUENCER SECTION ═══ -->
+<div class="section" id="page-sequencer">
+  <div class="seq-card">
+
+    <!-- Note picker -->
+    <div>
+      <div class="seq-section-label">1 · Pick note(s) — tap multiple for a chord</div>
+      <div class="note-grid" id="seq-note-grid"></div>
+      <div id="seq-selection-label" style="font-family:'Space Mono',monospace;font-size:0.7rem;color:#bbb;margin-top:7px;letter-spacing:0.06em;">No notes selected</div>
+    </div>
+
+    <!-- Duration picker -->
+    <div>
+      <div class="seq-section-label">2 · Pick a duration</div>
+      <div class="dur-grid" id="seq-dur-grid"></div>
+    </div>
+
+    <!-- Add button row -->
+    <div style="display:flex;gap:6px;">
+      <button id="seq-add-btn" disabled onclick="seqAddNote()" style="flex:2;">+ Add to Sequence</button>
+      <button id="seq-rest-btn" disabled onclick="seqAddRest()" style="flex:1;font-family:'Space Mono',monospace;font-size:0.8rem;padding:9px 0;border:1.5px solid #c9b99a;border-radius:3px;cursor:pointer;background:var(--paper);color:var(--line);letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;" title="Add a rest (silence)">𝄽 Rest</button>
+      <button onclick="seqAddBarline()" style="font-family:'Space Mono',monospace;font-size:0.8rem;padding:9px 10px;border:1.5px solid #c9b99a;border-radius:3px;cursor:pointer;background:var(--paper);color:var(--line);letter-spacing:0.06em;transition:all 0.15s;" title="Insert bar line">|</button>
+    </div>
+
+    <!-- Sequence display -->
+    <div>
+      <div class="seq-section-label">Sequence <span id="seq-count" style="color:var(--ink);font-weight:700"></span> <span style="color:#bbb;font-size:0.6rem">(tap a note to remove)</span></div>
+      <div class="seq-display" id="seq-display">
+        <span class="seq-empty">No notes yet — pick a note and duration above</span>
+      </div>
+    </div>
+
+    <!-- BPM + Damping -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="bpm-row">
+        <label>♩ = BPM</label>
+        <input type="range" id="bpm-slider" min="40" max="200" value="80" oninput="document.getElementById('bpm-val').textContent=this.value">
+        <span id="bpm-val">80</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--line);text-transform:uppercase;letter-spacing:0.08em;">Lyre sustain</span>
+        <button id="damp-btn" onclick="toggleDamping()" style="font-family:'Space Mono',monospace;font-size:0.7rem;padding:4px 12px;border:1.5px solid var(--line);border-radius:3px;cursor:pointer;background:var(--paper);color:var(--ink);letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;">🎵 Natural</button>
+        <span id="damp-desc" style="font-family:'Space Mono',monospace;font-size:0.65rem;color:#aaa;letter-spacing:0.04em;">note rings freely</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--line);text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap;">Decay</span>
+        <div style="display:flex;gap:5px;">
+          <button class="decay-btn active" data-decay="0.6" onclick="setDecay(this)">Short</button>
+          <button class="decay-btn" data-decay="1.8" onclick="setDecay(this)">Medium</button>
+          <button class="decay-btn" data-decay="4.0" onclick="setDecay(this)">Long</button>
+          <button class="decay-btn" data-decay="8.0" onclick="setDecay(this)">Very Long</button>
+        </div>
+        <span id="decay-desc" style="font-family:'Space Mono',monospace;font-size:0.65rem;color:#aaa;letter-spacing:0.04em;">~0.6s</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="seq-controls">
+      <button class="seq-ctrl-btn primary" id="seq-play-btn" onclick="seqPlay()" disabled>▶ Play</button>
+      <button class="seq-ctrl-btn" id="seq-loop-btn" onclick="seqToggleLoop()">↺ Loop</button>
+      <button class="seq-ctrl-btn" onclick="seqStop()">■ Stop</button>
+      <button class="seq-ctrl-btn" onclick="seqClear()">🗑 Clear</button>
+    </div>
+
+    <!-- Export -->
+    <button class="seq-ctrl-btn" id="seq-export-btn" onclick="seqExportPDF()" style="width:100%;border-color:var(--gold);color:var(--gold);" disabled>⬇ Export PDF</button>
+
+    <!-- Saved sequences -->
+    <div>
+      <div class="seq-section-label" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>💾 Saved Sequences <span id="save-count" style="color:var(--ink);font-weight:700;"></span></span>
+        <button id="seq-save-btn" onclick="seqSaveCurrent()" disabled style="font-family:'Space Mono',monospace;font-size:0.68rem;padding:3px 10px;border:1.5px solid var(--line);border-radius:2px;cursor:pointer;background:var(--paper);color:var(--ink);letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;">Save current</button>
+      </div>
+      <div id="saved-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+    </div>
+
+  </div>
+</div><!-- end #page-sequencer -->
+
+<!-- Progress pips (practice only, moved inside practice section above) -->
+
+<footer>G3–A5 Lyre · D2–A5 Guzheng · Western + Jianpu</footer>
+
+<!-- Print sheet — only visible during PDF export -->
+<div id="print-sheet"></div>
+
+<button id="vol-btn" onclick="toggleMute()" title="Toggle sound">🔔</button>
+
+<script>
+// ─── Note definitions ───────────────────────────────────────────
+// Each note: name, octave, staffPos (steps from middle C = 0, positive=up)
+// Treble clef: middle line = B4 = staffPos 6
+// Bass clef: middle line = D3 = staffPos -6
+
+const NOTE_NAMES_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_NAMES_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+// Diatonic note positions from C4 (middle C) in staff steps
+// C4=0, D4=1, E4=2, F4=3, G4=4, A4=5, B4=6, C5=7, ...
+// C3=-7, D3=-6, etc.
+function noteToStaffPos(name, octave) {
+  const diatonic = {'C':0,'D':1,'E':2,'F':3,'G':4,'A':5,'B':6};
+  const base = name.replace('#','').replace('b','');
+  return diatonic[base] + (octave - 4) * 7;
+}
+
+function midiFromNote(name, octave) {
+  const semi = {'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11};
+  return 12 + octave*12 + semi[name];
+}
+
+// Jianpu: 1=C, 2=D, 3=E, 4=F, 5=G, 6=A, 7=B
+// Dots above = higher octave, dots below = lower octave (relative to C4 = 1)
+function noteToJianpu(name, octave) {
+  const jMap = {'C':1,'D':2,'E':3,'F':4,'G':5,'A':6,'B':7,
+                'C#':1,'D#':2,'F#':4,'G#':5,'A#':6, // accidentals use base
+                'Db':2,'Eb':3,'Gb':5,'Ab':6,'Bb':7};
+  const num = jMap[name] || jMap[name.replace('#','').replace('b','')];
+  const octaveDiff = octave - 4; // relative to octave 4 (C4=1 in jianpu standard)
+  let dotsAbove = '', dotsBelow = '';
+  if (octaveDiff > 0) dotsAbove = '·'.repeat(octaveDiff);
+  if (octaveDiff < 0) dotsBelow = '·'.repeat(-octaveDiff);
+  return { num, dotsAbove, dotsBelow, hasAccidental: name.includes('#') || name.includes('b') };
+}
+
+// Build note pool for each instrument
+function buildPool(instrument) {
+  const notes = [];
+  // Diatonic notes only for clean practice
+  const diatonic = ['C','D','E','F','G','A','B'];
+  let ranges;
+  if (instrument === 'lyre') {
+    // G3–A5 (16 strings, diatonic)
+    ranges = [{octave:3, notes:['G','A','B']}, {octave:4, notes:diatonic}, {octave:5, notes:['C','D','E','F','G','A']}];
+  } else {
+    // Guzheng D2–A5 (pentatonic + some extra)
+    const penta = ['D','E','G','A','B']; // standard D pentatonic
+    ranges = [
+      {octave:2, notes:['D','E','G','A','B']},
+      {octave:3, notes:penta},
+      {octave:4, notes:penta},
+      {octave:5, notes:['D','E','G','A']},
+    ];
+  }
+  for (const r of ranges) {
+    for (const n of r.notes) {
+      notes.push({ name: n, octave: r.octave });
+    }
+  }
+  return notes;
+}
+
+// ─── State ───────────────────────────────────────────────────────
+let pool = buildPool('lyre');
+let currentNote = null;
+let answered = false;
+let scoreCorrect = 0, scoreWrong = 0, streak = 0;
+let history = []; // 'ok' | 'bad'
+let notationMode = 'staff'; // 'staff' | 'jianpu' | 'both'
+let instrument = 'lyre';
+
+// ─── Instrument / notation setters ───────────────────────────────
+function setInstrument(inst) {
+  instrument = inst;
+  pool = buildPool(inst);
+  document.querySelectorAll('.inst-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().includes(inst === 'lyre' ? 'lyre' : 'guzh')));
+  nextNote();
+}
+
+function setNotation(mode) {
+  notationMode = mode;
+  document.querySelectorAll('.ntab').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === mode));
+  if (currentNote) renderNotation(currentNote);
+}
+
+// ─── Staff drawing ────────────────────────────────────────────────
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function drawStaff(note) {
+  const svg = document.getElementById('staff-svg');
+  svg.innerHTML = '';
+  const W = 320, H = 160;
+  const staffTop = 40; // y of top staff line
+  const lineGap = 10;  // gap between staff lines (= 1 step)
+  const noteX = W / 2;
+
+  // Determine clef: notes below C4 use bass clef
+  const useBassCl = note.octave < 4 || (note.octave === 4 && ['C','D'].includes(note.name) && instrument === 'guzheng');
+  document.getElementById('clef-label').textContent = useBassCl ? 'Bass Clef' : 'Treble Clef';
+
+  // Staff lines (5 lines)
+  for (let i = 0; i < 5; i++) {
+    const y = staffTop + i * lineGap * 2;
+    const line = document.createElementNS(SVG_NS, 'line');
+    line.setAttribute('x1', 40); line.setAttribute('x2', W - 40);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#3a2e1a'); line.setAttribute('stroke-width', '1.2');
+    svg.appendChild(line);
+  }
+
+  // Clef symbol
+  const clefText = document.createElementNS(SVG_NS, 'text');
+  if (!useBassCl) {
+    // Treble clef (unicode)
+    clefText.setAttribute('x', '44'); clefText.setAttribute('y', staffTop + lineGap*5);
+    clefText.setAttribute('font-size', '68'); clefText.setAttribute('fill', '#3a2e1a');
+    clefText.textContent = '𝄞';
+  } else {
+    // Bass clef
+    clefText.setAttribute('x', '44'); clefText.setAttribute('y', staffTop + lineGap*3.5);
+    clefText.setAttribute('font-size', '44'); clefText.setAttribute('fill', '#3a2e1a');
+    clefText.textContent = '𝄢';
+  }
+  svg.appendChild(clefText);
+
+  // Calculate note Y position
+  // Treble: top line = F5 (staffPos=9), each step = lineGap down
+  // Bass: top line = A3 (staffPos=2), each step = lineGap down
+  let topLinePos;
+  if (!useBassCl) {
+    topLinePos = noteToStaffPos('F', 5); // F5 = top line of treble
+  } else {
+    topLinePos = noteToStaffPos('A', 3); // A3 = top line of bass
+  }
+
+  const notePos = noteToStaffPos(note.name, note.octave);
+  const stepsFromTop = topLinePos - notePos;
+  const noteY = staffTop + stepsFromTop * lineGap;
+
+  // Ledger lines
+  const staffBottomPos = useBassCl ? noteToStaffPos('G', 1) : noteToStaffPos('E', 4);
+  const staffTopPos = useBassCl ? noteToStaffPos('A', 3) : noteToStaffPos('F', 5);
+
+  // Draw ledger lines if note is outside staff
+  if (notePos > staffTopPos) {
+    // Above
+    for (let p = staffTopPos + 2; p <= notePos + (notePos % 2 === staffTopPos % 2 ? 0 : 1); p += 2) {
+      const ly = staffTop + (topLinePos - p) * lineGap;
+      if (ly < staffTop - lineGap * 0.5) {
+        addLedgerLine(svg, noteX, ly, '#3a2e1a');
+      }
+    }
+  }
+  if (notePos < (staffTopPos - 8)) {
+    // Below staff (bottom line pos)
+    const bottomLinePos = staffTopPos - 8;
+    for (let p = bottomLinePos - 2; p >= notePos - (notePos % 2 === bottomLinePos % 2 ? 0 : 1); p -= 2) {
+      const ly = staffTop + (topLinePos - p) * lineGap;
+      if (ly > staffTop + lineGap * 8 + lineGap * 0.5) {
+        addLedgerLine(svg, noteX, ly, '#3a2e1a');
+      }
+    }
+  }
+  // Middle C ledger line
+  const middleCPos = noteToStaffPos('C', 4);
+  if (notePos === middleCPos) {
+    addLedgerLine(svg, noteX, staffTop + (topLinePos - middleCPos) * lineGap, '#3a2e1a');
+  }
+
+  // Note head
+  const ellipse = document.createElementNS(SVG_NS, 'ellipse');
+  ellipse.setAttribute('cx', noteX);
+  ellipse.setAttribute('cy', noteY);
+  ellipse.setAttribute('rx', '7');
+  ellipse.setAttribute('ry', '5.5');
+  ellipse.setAttribute('fill', '#c0392b');
+  ellipse.setAttribute('transform', `rotate(-15, ${noteX}, ${noteY})`);
+  svg.appendChild(ellipse);
+
+  // Stem
+  const stem = document.createElementNS(SVG_NS, 'line');
+  const stemUp = noteY > staffTop + lineGap * 4;
+  stem.setAttribute('x1', stemUp ? noteX + 6 : noteX - 6);
+  stem.setAttribute('x2', stemUp ? noteX + 6 : noteX - 6);
+  stem.setAttribute('y1', noteY);
+  stem.setAttribute('y2', stemUp ? noteY - 35 : noteY + 35);
+  stem.setAttribute('stroke', '#c0392b');
+  stem.setAttribute('stroke-width', '1.5');
+  svg.appendChild(stem);
+
+  // Accidental
+  if (note.name.includes('#')) {
+    const acc = document.createElementNS(SVG_NS, 'text');
+    acc.setAttribute('x', noteX - 18); acc.setAttribute('y', noteY + 5);
+    acc.setAttribute('font-size', '14'); acc.setAttribute('fill', '#3a2e1a');
+    acc.textContent = '♯';
+    svg.appendChild(acc);
+  } else if (note.name.includes('b')) {
+    const acc = document.createElementNS(SVG_NS, 'text');
+    acc.setAttribute('x', noteX - 18); acc.setAttribute('y', noteY + 5);
+    acc.setAttribute('font-size', '14'); acc.setAttribute('fill', '#3a2e1a');
+    acc.textContent = '♭';
+    svg.appendChild(acc);
+  }
+}
+
+function addLedgerLine(svg, cx, y, color) {
+  const l = document.createElementNS(SVG_NS, 'line');
+  l.setAttribute('x1', cx - 12); l.setAttribute('x2', cx + 12);
+  l.setAttribute('y1', y); l.setAttribute('y2', y);
+  l.setAttribute('stroke', color); l.setAttribute('stroke-width', '1.2');
+  svg.appendChild(l);
+}
+
+// ─── Jianpu rendering ─────────────────────────────────────────────
+function drawJianpu(note) {
+  const j = noteToJianpu(note.name, note.octave);
+  document.getElementById('jianpu-num').textContent = j.num + (j.hasAccidental ? (note.name.includes('#') ? '♯' : '♭') : '');
+  document.getElementById('jianpu-dots-above').textContent = j.dotsAbove;
+  document.getElementById('jianpu-dots-below').textContent = j.dotsBelow;
+}
+
+// ─── Render both notations based on mode ─────────────────────────
+function renderNotation(note) {
+  const staffArea = document.getElementById('staff-area');
+  const jianpuArea = document.getElementById('jianpu-area');
+
+  if (notationMode === 'staff') {
+    staffArea.style.display = 'flex';
+    jianpuArea.classList.remove('visible');
+    drawStaff(note);
+  } else if (notationMode === 'jianpu') {
+    staffArea.style.display = 'none';
+    jianpuArea.classList.add('visible');
+    drawJianpu(note);
+  } else { // both
+    staffArea.style.display = 'flex';
+    jianpuArea.classList.add('visible');
+    drawStaff(note);
+    drawJianpu(note);
+  }
+}
+
+// ─── Answer choices ───────────────────────────────────────────────
+function buildChoices(correct) {
+  // Get all unique note names in pool
+  const allNames = [...new Set(pool.map(n => n.name + n.octave))];
+  // Build wrong choices from same pool
+  const wrong = allNames.filter(n => n !== correct.name + correct.octave);
+  // Shuffle and pick 5
+  const shuffled = wrong.sort(() => Math.random() - 0.5).slice(0, 5);
+  // Format label
+  const all = [...shuffled, correct.name + correct.octave].sort(() => Math.random() - 0.5);
+  return all.map(id => {
+    const n = id.replace(/\d/g,'');
+    const o = parseInt(id.match(/\d/)[0]);
+    return { id, label: n + o, noteName: n, octave: o };
+  });
+}
+
+function renderAnswers(choices, correctId) {
+  const div = document.getElementById('answers');
+  div.innerHTML = '';
+  choices.forEach(ch => {
+    const btn = document.createElement('button');
+    btn.className = 'ans-btn';
+    btn.textContent = ch.label;
+    btn.onclick = () => checkAnswer(ch.id, correctId);
+    div.appendChild(btn);
+  });
+}
+
+// ─── Game logic ────────────────────────────────────────────────────
+function nextNote() {
+  answered = false;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = '';
+  document.getElementById('next-btn').classList.remove('visible');
+
+  // Pick random note from pool
+  currentNote = pool[Math.floor(Math.random() * pool.length)];
+
+  // Render notation
+  renderNotation(currentNote);
+
+  // Play the note sound
+  playNote(currentNote.name, currentNote.octave, instrument);
+
+  // Build answer choices
+  const choices = buildChoices(currentNote);
+  renderAnswers(choices, currentNote.name + currentNote.octave);
+}
+
+function checkAnswer(chosen, correctId) {
+  if (answered) return;
+  answered = true;
+
+  const btns = document.querySelectorAll('.ans-btn');
+  btns.forEach(b => {
+    b.disabled = true;
+    const bId = b.textContent.replace('♯','#').replace('♭','b').replace(' ','');
+    // normalise label back to id
+    const noteN = bId.replace(/[0-9]/g,'');
+    const octN  = bId.match(/[0-9]/)?.[0];
+    if ((noteN + octN) === correctId) b.classList.add('correct');
+    else if ((noteN + octN) === chosen) b.classList.add('wrong');
+  });
+
+  const correct = chosen === correctId;
+  const fb = document.getElementById('feedback');
+
+  if (correct) {
+    scoreCorrect++;
+    streak++;
+    fb.textContent = '✓ Correct!';
+    fb.className = '';
+    history.push('ok');
+  } else {
+    scoreWrong++;
+    streak = 0;
+    const cn = correctId.replace(/[0-9]/g,'');
+    const co = correctId.match(/[0-9]/)[0];
+    fb.textContent = `✗ It was ${cn}${co}`;
+    fb.className = 'wrong-fb';
+    history.push('bad');
+  }
+
+  document.getElementById('sc-correct').textContent = scoreCorrect;
+  document.getElementById('sc-wrong').textContent = scoreWrong;
+  document.getElementById('sc-streak').textContent = streak;
+
+  // Progress pips (last 20)
+  const strip = document.getElementById('progress-strip');
+  strip.innerHTML = '';
+  history.slice(-20).forEach(h => {
+    const pip = document.createElement('div');
+    pip.className = 'pip ' + h;
+    strip.appendChild(pip);
+  });
+
+  document.getElementById('next-btn').classList.add('visible');
+}
+
+// ─── Audio engine (Web Audio API) ────────────────────────────────
+let audioCtx = null;
+let soundEnabled = true;
+let lyreNaturalDecay = true; // false = damped (overlap cut short)
+let lyreDecaySec = 0.6;      // controlled by preset buttons
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function noteToFreq(name, octave) {
+  const semis = {'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,
+                 'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11};
+  const midi = 12 + octave * 12 + semis[name];
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function playNote(name, octave, inst) {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const freq = noteToFreq(name, octave);
+  const now = ctx.currentTime;
+
+  const master = ctx.createGain();
+  master.connect(ctx.destination);
+
+  if (inst === 'lyre') {
+    // Clean sine-based pluck — no buzz
+    const decay = lyreNaturalDecay ? lyreDecaySec : Math.min(lyreDecaySec, 0.5);
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    const g2 = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(freq, now);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2.001, now); // very slight octave shimmer
+
+    // Sharp attack, natural exponential decay
+    g1.gain.setValueAtTime(0.0001, now);
+    g1.gain.linearRampToValueAtTime(0.6, now + 0.005); // ~5ms attack
+    g1.gain.exponentialRampToValueAtTime(0.001, now + decay);
+
+    g2.gain.setValueAtTime(0.0001, now);
+    g2.gain.linearRampToValueAtTime(0.12, now + 0.005);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + decay * 0.6);
+
+    master.gain.setValueAtTime(0.55, now);
+
+    osc1.connect(g1); g1.connect(master);
+    osc2.connect(g2); g2.connect(master);
+    osc1.start(now); osc1.stop(now + decay + 0.05);
+    osc2.start(now); osc2.stop(now + decay * 0.6 + 0.05);
+
+    // Soft pluck transient (much gentler than before)
+    const click = ctx.createOscillator();
+    const cg = ctx.createGain();
+    click.type = 'sine';
+    click.frequency.setValueAtTime(freq * 3, now);
+    cg.gain.setValueAtTime(0.06, now);
+    cg.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    click.connect(cg); cg.connect(master);
+    click.start(now); click.stop(now + 0.03);
+
+  } else {
+    // Guzheng: warmer, longer sustain with vibrato-like wobble
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const g = ctx.createGain();
+    const g2 = ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, now);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 0.998, now);
+
+    // Subtle vibrato via LFO
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(5.5, now);
+    lfoGain.gain.setValueAtTime(0, now);
+    lfoGain.gain.linearRampToValueAtTime(freq * 0.004, now + 0.3);
+    lfoGain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    g.gain.setValueAtTime(0.38, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
+    g2.gain.setValueAtTime(0.22, now);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + 2.8);
+
+    master.gain.setValueAtTime(0.5, now);
+
+    // Low-pass filter for warmth
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2400, now);
+    filter.Q.setValueAtTime(1, now);
+
+    osc.connect(g); g.connect(filter); filter.connect(master);
+    osc2.connect(g2); g2.connect(master);
+
+    osc.start(now); osc.stop(now + 4);
+    osc2.start(now); osc2.stop(now + 3.2);
+    lfo.start(now); lfo.stop(now + 4);
+  }
+}
+
+function toggleMute() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('vol-btn');
+  btn.textContent = soundEnabled ? '🔔' : '🔕';
+  btn.classList.toggle('muted', !soundEnabled);
+}
+
+// ─── Page switching ───────────────────────────────────────────────
+function switchPage(page) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.page-tab').forEach(b => {
+    if (b.textContent.toLowerCase().includes(page === 'practice' ? 'practice' : 'sequencer')) b.classList.add('active');
+  });
+  if (page === 'sequencer') seqBuildGrids();
+}
+
+// ─── Sequencer state ──────────────────────────────────────────────
+const DURATIONS = [
+  { id: 'whole',     label: 'Whole',   symbol: '𝅝',  beats: 4    },
+  { id: 'half',      label: 'Half',    symbol: '𝅗𝅥',  beats: 2    },
+  { id: 'quarter',   label: 'Quarter', symbol: '♩',  beats: 1    },
+  { id: 'eighth',    label: 'Eighth',  symbol: '♪',  beats: 0.5  },
+  { id: 'sixteenth', label: '16th',    symbol: '♬',  beats: 0.25 },
+];
+
+let seqNotes = [];
+let seqSelectedNotes = []; // array of {name, octave} — supports chords
+let seqSelectedDur  = null;
+let seqLoopOn = false;
+let seqTimeouts = [];
+let seqPlaying = false;
+
+function seqBuildGrids() {
+  const grid = document.getElementById('seq-note-grid');
+  grid.innerHTML = '';
+  const byOct = {};
+  pool.forEach(n => { if (!byOct[n.octave]) byOct[n.octave] = []; byOct[n.octave].push(n.name); });
+  Object.keys(byOct).sort().forEach(oct => {
+    byOct[oct].forEach(name => {
+      const btn = document.createElement('button');
+      btn.className = 'ng-btn';
+      btn.textContent = name + oct;
+      btn.dataset.name = name; btn.dataset.octave = oct;
+      btn.onclick = () => seqToggleNoteSelect(name, parseInt(oct), btn);
+      grid.appendChild(btn);
+    });
+  });
+
+  const dgrid = document.getElementById('seq-dur-grid');
+  dgrid.innerHTML = '';
+  DURATIONS.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'dur-btn'; btn.dataset.dur = d.id;
+    btn.innerHTML = `<span class="dur-symbol">${d.symbol}</span><span class="dur-label">${d.label}</span>`;
+    btn.onclick = () => seqSelectDur(d.id, btn);
+    dgrid.appendChild(btn);
+  });
+
+  seqSelectedNotes = []; seqSelectedDur = null;
+  document.getElementById('seq-add-btn').disabled = true;
+  seqUpdateSelectionLabel();
+  renderSavedList();
+}
+
+function seqToggleNoteSelect(name, octave, btn) {
+  const key = name + octave;
+  const idx = seqSelectedNotes.findIndex(n => n.name === name && n.octave === octave);
+  if (idx >= 0) {
+    // deselect
+    seqSelectedNotes.splice(idx, 1);
+    btn.classList.remove('selected');
+  } else {
+    // select & preview
+    seqSelectedNotes.push({ name, octave });
+    btn.classList.add('selected');
+    playNote(name, octave, instrument);
+  }
+  seqCheckAddReady();
+  seqUpdateSelectionLabel();
+}
+
+function seqUpdateSelectionLabel() {
+  const label = document.getElementById('seq-selection-label');
+  if (!label) return;
+  if (seqSelectedNotes.length === 0) {
+    label.textContent = 'No notes selected';
+    label.style.color = '#bbb';
+  } else if (seqSelectedNotes.length === 1) {
+    label.textContent = seqSelectedNotes[0].name + seqSelectedNotes[0].octave + ' selected';
+    label.style.color = 'var(--ink)';
+  } else {
+    const names = seqSelectedNotes.map(n => n.name + n.octave).join(' + ');
+    label.textContent = `Chord: ${names}`;
+    label.style.color = 'var(--gold)';
+  }
+}
+
+function seqSelectDur(durId, btn) {
+  seqSelectedDur = durId;
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  seqCheckAddReady();
+}
+
+function seqCheckAddReady() {
+  const hasDur = !!seqSelectedDur;
+  document.getElementById('seq-add-btn').disabled = !(seqSelectedNotes.length > 0 && hasDur);
+  document.getElementById('seq-rest-btn').disabled = !hasDur;
+}
+
+function seqAddNote() {
+  if (seqSelectedNotes.length === 0 || !seqSelectedDur) return;
+  // Sort notes low→high for display
+  const sorted = [...seqSelectedNotes].sort((a, b) => {
+    const midiA = a.octave * 12 + ['C','D','E','F','G','A','B'].indexOf(a.name.replace(/[#b]/g,''));
+    const midiB = b.octave * 12 + ['C','D','E','F','G','A','B'].indexOf(b.name.replace(/[#b]/g,''));
+    return midiA - midiB;
+  });
+  seqNotes.push({ notes: sorted, durId: seqSelectedDur });
+  // Clear note selection after adding
+  seqSelectedNotes = [];
+  document.querySelectorAll('.ng-btn').forEach(b => b.classList.remove('selected'));
+  seqUpdateSelectionLabel();
+  seqCheckAddReady();
+  seqRenderDisplay();
+}
+
+function seqAddRest() {
+  if (!seqSelectedDur) return;
+  seqNotes.push({ type: 'rest', durId: seqSelectedDur });
+  seqRenderDisplay();
+}
+
+function seqAddBarline() {
+  // Don't add two barlines in a row
+  if (seqNotes.length > 0 && seqNotes[seqNotes.length - 1].type === 'barline') return;
+  seqNotes.push({ type: 'barline' });
+  seqRenderDisplay();
+}
+
+function noteToJianpuNum(name) {
+  const m = {'C':1,'D':2,'E':3,'F':4,'G':5,'A':6,'B':7,
+             'C#':1,'D#':2,'F#':4,'G#':5,'A#':6,'Db':2,'Eb':3,'Gb':5,'Ab':6,'Bb':7};
+  return m[name] || m[name.replace(/[#b]/g,'')] || '?';
+}
+
+function seqRenderDisplay() {
+  const el = document.getElementById('seq-display');
+  el.innerHTML = '';
+  if (seqNotes.length === 0) {
+    el.innerHTML = '<span class="seq-empty">No notes yet — pick note(s) and a duration above</span>';
+    document.getElementById('seq-play-btn').disabled = true;
+    document.getElementById('seq-count').textContent = '';
+    document.getElementById('seq-export-btn').disabled = true;
+    const saveBtn = document.getElementById('seq-save-btn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.4'; }
+    return;
+  }
+  document.getElementById('seq-play-btn').disabled = false;
+  document.getElementById('seq-count').textContent = `(${seqNotes.length})`;
+  document.getElementById('seq-export-btn').disabled = false;
+  // Update save button state
+  const saves = loadSavedSeqs();
+  const saveBtn = document.getElementById('seq-save-btn');
+  if (saveBtn) {
+    saveBtn.disabled = seqNotes.length === 0 || saves.length >= MAX_SAVES;
+    saveBtn.style.opacity = saveBtn.disabled ? '0.4' : '1';
+  }
+
+  seqNotes.forEach((entry, i) => {
+    // ── Barline ──
+    if (entry.type === 'barline') {
+      const bl = document.createElement('div');
+      bl.className = 'seq-barline';
+      bl.id = 'chip-' + i;
+      bl.title = 'Click to remove bar line';
+      bl.innerHTML = `<div class="bar-inner"></div><span class="bar-x">✕</span>`;
+      bl.onclick = () => { if (!seqPlaying) { seqNotes.splice(i, 1); seqRenderDisplay(); } };
+      el.appendChild(bl);
+      return;
+    }
+
+    // ── Rest ──
+    if (entry.type === 'rest') {
+      const dur = DURATIONS.find(d => d.id === entry.durId);
+      const REST_SYMBOLS = { whole: '𝄻', half: '𝄼', quarter: '𝄽', eighth: '𝄾', sixteenth: '𝄿' };
+      const sym = REST_SYMBOLS[entry.durId] || '𝄽';
+      const chip = document.createElement('div');
+      chip.className = 'rest-chip';
+      chip.id = 'chip-' + i;
+      chip.title = 'Click to remove';
+      chip.innerHTML = `
+        <span class="rest-symbol">${sym}</span>
+        <span class="rest-dashes">— —</span>
+        <span class="rest-label">${dur.label}</span>
+      `;
+      chip.onclick = () => { if (!seqPlaying) { seqNotes.splice(i, 1); seqRenderDisplay(); } };
+      el.appendChild(chip);
+      return;
+    }
+
+    // ── Normal note / chord ──
+    const dur = DURATIONS.find(d => d.id === entry.durId);
+    const isChord = entry.notes.length > 1;
+
+    const chip = document.createElement('div');
+    chip.className = 'seq-note-chip' + (isChord ? ' chord-chip' : '');
+    chip.id = 'chip-' + i;
+    chip.title = 'Click to remove';
+
+    const noteRows = [...entry.notes].reverse().map(n => {
+      const jNum = noteToJianpuNum(n.name);
+      const octDiff = n.octave - 4;
+      let jLabel = String(jNum);
+      if (octDiff > 0) jLabel = '·'.repeat(octDiff) + jLabel;
+      if (octDiff < 0) jLabel = jLabel + '·'.repeat(-octDiff);
+      return `<div class="chip-note-row">
+        <span class="chip-western">${n.name}${n.octave}</span>
+        <span class="chip-jianpu">${jLabel}</span>
+      </div>`;
+    }).join('');
+
+    chip.innerHTML = `
+      ${isChord ? '<div class="chip-chord-bar"></div>' : ''}
+      <div class="chip-notes-stack">${noteRows}</div>
+      <span class="chip-dur">${dur.symbol}</span>
+    `;
+    chip.onclick = () => { if (!seqPlaying) { seqNotes.splice(i, 1); seqRenderDisplay(); } };
+    el.appendChild(chip);
+  });
+}
+
+function seqPlay() {
+  if (seqNotes.length === 0) return;
+  seqStop();
+  seqPlaying = true;
+  _seqPlayOnce();
+}
+
+function _seqPlayOnce() {
+  const bpm = parseInt(document.getElementById('bpm-slider').value);
+  const quarterMs = (60 / bpm) * 1000;
+  let timeMs = 0;
+
+  seqNotes.forEach((entry, i) => {
+    // Barlines are visual only — skip
+    if (entry.type === 'barline') return;
+
+    const dur = DURATIONS.find(d => d.id === entry.durId);
+    const noteMs = dur.beats * quarterMs;
+    const t = setTimeout(() => {
+      if (!seqPlaying) return;
+      document.querySelectorAll('.seq-note-chip, .rest-chip').forEach(c => c.classList.remove('playing'));
+      const chip = document.getElementById('chip-' + i);
+      if (chip) chip.classList.add('playing');
+      // Rests: highlight but play nothing
+      if (entry.type !== 'rest') {
+        entry.notes.forEach(n => playNoteForDuration(n.name, n.octave, instrument, noteMs / 1000));
+      }
+    }, timeMs);
+    seqTimeouts.push(t);
+    timeMs += noteMs;
+  });
+
+  const endT = setTimeout(() => {
+    document.querySelectorAll('.seq-note-chip').forEach(c => c.classList.remove('playing'));
+    if (seqLoopOn && seqPlaying) { _seqPlayOnce(); }
+    else { seqPlaying = false; }
+  }, timeMs);
+  seqTimeouts.push(endT);
+}
+
+function seqStop() {
+  seqPlaying = false;
+  seqTimeouts.forEach(t => clearTimeout(t));
+  seqTimeouts = [];
+  document.querySelectorAll('.seq-note-chip, .rest-chip').forEach(c => c.classList.remove('playing'));
+}
+
+function seqToggleLoop() {
+  seqLoopOn = !seqLoopOn;
+  const btn = document.getElementById('seq-loop-btn');
+  btn.classList.toggle('loop-on', seqLoopOn);
+  btn.textContent = seqLoopOn ? '↺ Loop ON' : '↺ Loop';
+}
+
+function seqClear() {
+  seqStop();
+  seqNotes = [];
+  seqRenderDisplay();
+}
+
+function playNoteForDuration(name, octave, inst, durationSec) {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+  const freq = noteToFreq(name, octave);
+  const now = ctx.currentTime;
+  const sustain = Math.max(durationSec * 0.85, 0.08);
+  const release = 0.15;
+
+  const master = ctx.createGain();
+  master.connect(ctx.destination);
+  master.gain.setValueAtTime(0.5, now);
+  master.gain.setValueAtTime(0.5, now + sustain);
+  master.gain.exponentialRampToValueAtTime(0.001, now + sustain + release);
+
+  if (inst === 'lyre') {
+    // Use lyreDecaySec as base; damped mode clips to note duration
+    const decay = lyreNaturalDecay
+      ? Math.max(lyreDecaySec, durationSec * 0.5)
+      : Math.min(durationSec * 0.9, lyreDecaySec);
+    const release2 = 0.08;
+
+    const osc = ctx.createOscillator(); osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    const osc2 = ctx.createOscillator(); osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2.001, now);
+
+    const g1 = ctx.createGain();
+    g1.gain.setValueAtTime(0.0001, now);
+    g1.gain.linearRampToValueAtTime(0.6, now + 0.005);
+    g1.gain.exponentialRampToValueAtTime(0.001, now + decay);
+
+    const g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0.0001, now);
+    g2.gain.linearRampToValueAtTime(0.12, now + 0.005);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + decay * 0.6);
+
+    master.gain.setValueAtTime(0.55, now);
+
+    osc.connect(g1); g1.connect(master);
+    osc2.connect(g2); g2.connect(master);
+    osc.start(now); osc.stop(now + decay + 0.1);
+    osc2.start(now); osc2.stop(now + decay * 0.6 + 0.1);
+
+    // Soft pluck click
+    const click = ctx.createOscillator(); click.type = 'sine';
+    click.frequency.setValueAtTime(freq * 3, now);
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.06, now);
+    cg.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    click.connect(cg); cg.connect(master);
+    click.start(now); click.stop(now + 0.03);
+  } else {
+    const osc = ctx.createOscillator(); osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, now);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.4, now);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.setValueAtTime(2200, now);
+    osc.connect(g); g.connect(filter); filter.connect(master);
+    osc.start(now); osc.stop(now + sustain + release + 0.05);
+  }
+}
+
+function seqExportPDF() {
+  if (seqNotes.length === 0) return;
+
+  const bpm = document.getElementById('bpm-slider').value;
+  const instName = instrument === 'lyre' ? 'Lyre Harp (G3\u2013A5)' : 'Guzheng (D2\u2013A5)';
+  const dateStr = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+
+  const REST_SYMBOLS = { whole: '𝄻', half: '𝄼', quarter: '𝄽', eighth: '𝄾', sixteenth: '𝄿' };
+  let stepNum = 0;
+  const chipsHtml = seqNotes.map((entry) => {
+    if (entry.type === 'barline') {
+      return `<div style="display:flex;align-items:center;padding:0 4px;align-self:stretch;">
+        <div style="width:3px;background:#3a2e1a;border-radius:2px;min-height:52px;opacity:0.5;"></div>
+      </div>`;
+    }
+    stepNum++;
+    const dur = DURATIONS.find(d => d.id === entry.durId);
+    if (entry.type === 'rest') {
+      const sym = REST_SYMBOLS[entry.durId] || '𝄽';
+      return `<div class="print-chip" style="background:#fafafa;border-style:dashed;">
+        <span class="pc-num">${stepNum}</span>
+        <span style="font-size:1.4rem;line-height:1;color:#aaa;">${sym}</span>
+        <span class="pc-durname" style="color:#bbb;">— — —</span>
+        <span class="pc-durname">${dur.label}</span>
+      </div>`;
+    }
+    const noteLines = entry.notes.map(n => {
+      const jNum = noteToJianpuNum(n.name);
+      const octDiff = n.octave - 4;
+      let jLabel = String(jNum);
+      if (octDiff > 0) jLabel = '\u00b7'.repeat(octDiff) + jLabel;
+      if (octDiff < 0) jLabel = jLabel + '\u00b7'.repeat(-octDiff);
+      return `<div style="display:flex;gap:6px;align-items:baseline;">
+        <span class="pc-note">${n.name}${n.octave}</span>
+        <span class="pc-jianpu">${jLabel}</span>
+      </div>`;
+    }).reverse().join('');
+    return `<div class="print-chip">
+      <span class="pc-num">${stepNum}</span>
+      <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">${noteLines}</div>
+      <span class="pc-dur">${dur.symbol}</span>
+      <span class="pc-durname">${dur.label}</span>
+    </div>`;
+  }).join('');
+
+  const sheet = document.getElementById('print-sheet');
+  sheet.innerHTML = `
+    <h2>Note Sequence</h2>
+    <div class="print-meta">${instName} &nbsp;&middot;&nbsp; ${dateStr} &nbsp;&middot;&nbsp; ${seqNotes.length} steps</div>
+    <div class="print-row">${chipsHtml}</div>
+    <div class="print-bpm">&spades; = ${bpm} BPM</div>
+    <div class="print-footer">Note Reader &middot; Lyre &amp; Guzheng Practice</div>
+  `;
+
+  window.print();
+}
+
+function setDecay(btn) {
+  lyreDecaySec = parseFloat(btn.dataset.decay);
+  document.querySelectorAll('.decay-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const labels = { '0.6': '~0.6s', '1.8': '~1.8s', '4.0': '~4s', '8.0': '~8s' };
+  document.getElementById('decay-desc').textContent = labels[btn.dataset.decay] || '';
+}
+
+// ─── Saved sequences (localStorage, max 5) ───────────────────────
+const SAVE_KEY = 'noteReader_savedSeqs';
+const MAX_SAVES = 5;
+
+function loadSavedSeqs() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || []; }
+  catch { return []; }
+}
+
+function writeSavedSeqs(arr) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(arr));
+}
+
+function seqSaveCurrent() {
+  if (seqNotes.length === 0) return;
+  const saves = loadSavedSeqs();
+  if (saves.length >= MAX_SAVES) {
+    alert(`You already have ${MAX_SAVES} saved sequences. Delete one first.`);
+    return;
+  }
+  const name = prompt(`Name this sequence (${saves.length + 1}/${MAX_SAVES}):`, `Phrase ${saves.length + 1}`);
+  if (!name) return;
+  const bpm = document.getElementById('bpm-slider').value;
+  saves.push({
+    id: Date.now(),
+    name: name.trim() || `Phrase ${saves.length + 1}`,
+    notes: JSON.parse(JSON.stringify(seqNotes)),
+    bpm: parseInt(bpm),
+    instrument,
+    savedAt: new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short' })
+  });
+  writeSavedSeqs(saves);
+  renderSavedList();
+}
+
+function seqLoadSave(id) {
+  const saves = loadSavedSeqs();
+  const s = saves.find(x => x.id === id);
+  if (!s) return;
+  seqStop();
+  seqNotes = JSON.parse(JSON.stringify(s.notes));
+  document.getElementById('bpm-slider').value = s.bpm;
+  document.getElementById('bpm-val').textContent = s.bpm;
+  seqRenderDisplay();
+  // Scroll up to see the sequence
+  document.getElementById('seq-display').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function seqDeleteSave(id) {
+  if (!confirm('Delete this saved sequence?')) return;
+  const saves = loadSavedSeqs().filter(x => x.id !== id);
+  writeSavedSeqs(saves);
+  renderSavedList();
+}
+
+function seqPreviewText(notes) {
+  return notes
+    .filter(e => e.type !== 'barline')
+    .slice(0, 8)
+    .map(e => {
+      if (e.type === 'rest') return '𝄽';
+      if (e.notes && e.notes.length > 1) return '[' + e.notes.map(n => n.name + n.octave).join('+') + ']';
+      if (e.notes && e.notes.length === 1) return e.notes[0].name + e.notes[0].octave;
+      return '?';
+    }).join('  ') + (notes.filter(e => e.type !== 'barline').length > 8 ? '  …' : '');
+}
+
+function renderSavedList() {
+  const saves = loadSavedSeqs();
+  const el = document.getElementById('saved-list');
+  const countEl = document.getElementById('save-count');
+  const saveBtn = document.getElementById('seq-save-btn');
+
+  countEl.textContent = `(${saves.length}/${MAX_SAVES})`;
+  saveBtn.disabled = seqNotes.length === 0 || saves.length >= MAX_SAVES;
+  saveBtn.style.opacity = saveBtn.disabled ? '0.4' : '1';
+
+  if (saves.length === 0) {
+    el.innerHTML = '<div class="saved-empty">No saved sequences yet</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  saves.forEach(s => {
+    const slot = document.createElement('div');
+    slot.className = 'saved-slot';
+    const steps = s.notes.filter(e => e.type !== 'barline').length;
+    slot.innerHTML = `
+      <div class="saved-slot-info">
+        <div class="saved-slot-name">${s.name}</div>
+        <div class="saved-slot-meta">${s.instrument === 'lyre' ? '🎵 Lyre' : '🎶 Guzheng'} · ${steps} steps · ♩=${s.bpm} · ${s.savedAt}</div>
+        <div class="saved-slot-preview">${seqPreviewText(s.notes)}</div>
+      </div>
+      <div class="saved-slot-btns">
+        <button class="slot-btn load-btn" onclick="seqLoadSave(${s.id})">▶ Load</button>
+        <button class="slot-btn del-btn" onclick="seqDeleteSave(${s.id})">✕</button>
+      </div>
+    `;
+    el.appendChild(slot);
+  });
+}
+
+function toggleDamping() {
+  lyreNaturalDecay = !lyreNaturalDecay;
+  const btn = document.getElementById('damp-btn');
+  const desc = document.getElementById('damp-desc');
+  if (lyreNaturalDecay) {
+    btn.textContent = '🎵 Natural';
+    btn.style.borderColor = 'var(--line)';
+    btn.style.color = 'var(--ink)';
+    btn.style.background = 'var(--paper)';
+    desc.textContent = 'note rings freely';
+  } else {
+    btn.textContent = '🤫 Damped';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    btn.style.background = '#fff5f5';
+    desc.textContent = 'string stopped — no overlap';
+  }
+}
+
+nextNote();
+</script>
+</body>
+</html>
